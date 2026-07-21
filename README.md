@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGPA Calculator & Tracker</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .container {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        h1, h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .input-group {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        input, select, button {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .danger-btn {
+            background-color: #ef4444;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background-color: var(--background);
+        }
+        .result-box {
+            background-color: #eff6ff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .sgpa-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .file-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            background-color: var(--surface);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Semester SGPA Calculator</h1>
+    
+    <div class="result-box">
+        <h2>Your SGPA</h2>
+        <div class="sgpa-value" id="displaySGPA">0.00</div>
+    </div>
+
+    <form id="courseForm">
+        <div class="input-group">
+            <input type="text" id="courseName" placeholder="e.g., Engineering Mechanics" required>
+            <input type="number" id="courseCredits" placeholder="Credits" min="1" max="10" required>
+            <select id="courseGrade" required>
+                <option value="" disabled selected>Grade</option>
+                <option value="10">O (10)</option>
+                <option value="9">A (9)</option>
+                <option value="8">B (8)</option>
+                <option value="7">C (7)</option>
+                <option value="6">D (6)</option>
+                <option value="5">E (5)</option>
+                <option value="4">P (4)</option>
+                <option value="0">F (0)</option>
+            </select>
+            <button type="submit">Add Course</button>
+        </div>
+    </form>
+
+    <table id="courseTable">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Credits</th>
+                <th>Grade Point</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="courseList">
+            </tbody>
+    </table>
+
+    <div class="file-actions">
+        <button onclick="saveToFile()">Save Semester locally</button>
+        <label class="file-label">
+            Load Semester
+            <input type="file" id="fileInput" accept=".json" onchange="loadFromFile(event)">
+        </label>
+    </div>
+</div>
+
+<script>
+    let courses = [];
+
+    const courseForm = document.getElementById('courseForm');
+    const courseList = document.getElementById('courseList');
+    const displaySGPA = document.getElementById('displaySGPA');
+
+    courseForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('courseName').value;
+        const credits = parseFloat(document.getElementById('courseCredits').value);
+        const gradePoint = parseFloat(document.getElementById('courseGrade').value);
+
+        const newCourse = {
+            id: Date.now(),
+            name: name,
+            credits: credits,
+            gradePoint: gradePoint
+        };
+
+        courses.push(newCourse);
+        courseForm.reset();
+        updateUI();
+    });
+    function removeCourse(id) {
+        courses = courses.filter(course => course.id !== id);
+        updateUI();
+    }
+    function calculateSGPA() {
+        if (courses.length === 0) return "0.00";
+
+        let totalCredits = 0;
+        let totalGradePoints = 0;
+
+        courses.forEach(course => {
+            totalCredits += course.credits;
+            totalGradePoints += (course.credits * course.gradePoint);
+        });
+
+        const sgpa = totalGradePoints / totalCredits;
+        return sgpa.toFixed(2);
+    }
+
+    function updateUI() {
+        courseList.innerHTML = ''; // Clear current table
+
+        courses.forEach(course => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${course.name}</td>
+                <td>${course.credits}</td>
+                <td>${course.gradePoint}</td>
+                <td><button class="danger-btn" onclick="removeCourse(${course.id})">Remove</button></td>
+            `;
+            courseList.appendChild(row);
+        });
+
+        displaySGPA.innerText = calculateSGPA();
+    }
+
+    function saveToFile() {
+        if (courses.length === 0) {
+            alert("No courses to save!");
+            return;
+        }
+
+        const dataStr = JSON.stringify(courses, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `semester_result_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function loadFromFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const loadedData = JSON.parse(e.target.result);
+                if (Array.isArray(loadedData)) {
+                    courses = loadedData;
+                    updateUI();
+                    alert("Semester data loaded successfully!");
+                } else {
+                    alert("Invalid file format.");
+                }
+            } catch (error) {
+                alert("Error reading file.");
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = ''; 
+    }
+</script>
+
+</body>
+</html>
